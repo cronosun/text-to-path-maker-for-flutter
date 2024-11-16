@@ -39,10 +39,10 @@ class PMFontReader {
   /// This method is responsible for calling a bunch of methods that parse
   /// the tables in the font file. It returns a PMFont object.
   PMFont _parseTTF() {
-    // If the reader is used multiple times, reset it.
+    // If the reader is used multiple times, reset it's state.
     font = PMFontBuilder();
 
-    var offset = _initializeOffsetTable();
+    final offset = _initializeOffsetTable();
     _initializeTables(offset);
     _readHead();
     _setNumGlyphs();
@@ -54,7 +54,7 @@ class PMFontReader {
 
   /// Initializes the offset table in the .ttf file
   int _initializeOffsetTable() {
-    var offset = 0;
+    int offset = 0;
     font.sfntVersion = fontData.getUint32(offset);
     offset += 4;
     font.numTables = fontData.getUint16(offset);
@@ -110,7 +110,7 @@ class PMFontReader {
         fontTables.requireFontTable(PMFontTables.tableNameLoca).offset;
 
     final tableData = PMGlyfFontTableData();
-    glyfFontTable.data = tableData;
+    glyfFontTable.setData(tableData);
 
     for (int i = 0; i < font.numGlyphs; i++) {
       int glyphOffset = startGlyfOffset;
@@ -292,7 +292,7 @@ class PMFontReader {
         flags: flags,
         unitsPerEm: unitsPerEm,
         indexToLocFormat: indexToLocFormat);
-    headFontTable.data = data;
+    headFontTable.setData(data);
   }
 
   /// Reads the maxp table to determine the number of glyphs present
@@ -302,9 +302,11 @@ class PMFontReader {
     final maxpFontTable =
         fontTables.requireFontTable(PMFontTables.tableNameMaxp);
 
-    int startOffset = maxpFontTable.offset;
-    font.numGlyphs = fontData.getUint16(startOffset + 4);
-    maxpFontTable.data = {'numGlyphs': font.numGlyphs};
+    final startOffset = maxpFontTable.offset;
+    final numGlyphs = fontData.getUint16(startOffset + 4);
+    font.numGlyphs = numGlyphs;
+    final tableData = PMMaxpFontTableData(numGlyphs: numGlyphs);
+    maxpFontTable.setData(tableData);
   }
 
   /// Reads the cmap table to map glyph IDs to character codes.
@@ -314,16 +316,18 @@ class PMFontReader {
         fontTables.requireFontTable(PMFontTables.tableNameCmap);
 
     int cmapOffset = cmapFontTable.offset;
-    var data = {};
-    cmapFontTable.data = data;
-    data['version'] = fontData.getUint16(cmapOffset);
-    var glyphIdToCharacterCodes = {};
-    data['characterMap'] = glyphIdToCharacterCodes;
+
+    final version = fontData.getUint16(cmapOffset);
     cmapOffset += 2;
 
-    var numTables = fontData.getUint16(cmapOffset);
+    final tableData = PMCMapFontTableData(version: version);
+    cmapFontTable.setData(tableData);
+
+    final numTables = fontData.getUint16(cmapOffset);
     cmapOffset += 2;
 
+    // The reverse map of what we have in the header (this is actually the one
+    // we need, the 'glyphIdToCharacterCodes' in the header is IMHO useless).
     final Map<int, int> codepointToGlyph = {};
 
     int offset = -1;
@@ -336,48 +340,44 @@ class PMFontReader {
       cmapOffset += 4;
       if (platformID == 3 &&
           (encodingID == 1 || encodingID == 0 || encodingID == 10)) {
-        _readFormat4Table(
-            data, offset, glyphIdToCharacterCodes, codepointToGlyph);
+        _readFormat4Table(tableData, offset, codepointToGlyph);
       }
     }
 
     font.codepointToGlyphTable = PMCodepointToGlyphTable(codepointToGlyph);
 
     if (offset == -1) {
-      print("Font not supported.");
-      return;
+      throw Exception("Font not supported.");
     }
   }
 
   /// Reads the Format4 subtable in the cmap table
   void _readFormat4Table(
-      data, offset, glyphIdToCharacterCodes, Map<int, int> codepointToGlyph) {
+      PMCMapFontTableData data, int offset, Map<int, int> codepointToGlyph) {
     final fontTables = font.tables;
     final cmapFontTable =
         fontTables.requireFontTable(PMFontTables.tableNameCmap);
     offset = offset + cmapFontTable.offset;
 
-    var format = fontData.getUint16(offset);
+    final format = fontData.getUint16(offset);
     offset += 2;
 
     if (format != 4) {
       if (format == 12) {
-        _readFormat12Table(
-            data, offset, glyphIdToCharacterCodes, codepointToGlyph);
+        _readFormat12Table(data, offset, codepointToGlyph);
         return;
       } else {
-        print("Font not supported yet.");
-        return;
+        throw Exception("Font not supported yet.");
       }
     }
 
     offset += 2;
 
     offset += 2; // skip language
-    var nSegments = fontData.getUint16(offset) / 2;
+    final nSegments = fontData.getUint16(offset) / 2;
     offset += 2;
 
-    var endCodes = [];
+    final endCodes = <int>[];
     for (var i = 0; i < nSegments; i++) {
       endCodes.add(fontData.getUint16(offset));
       offset += 2;
@@ -385,19 +385,19 @@ class PMFontReader {
 
     offset += 2; // step over reserved pad
 
-    var startCodes = [];
+    final startCodes = <int>[];
     for (var i = 0; i < nSegments; i++) {
       startCodes.add(fontData.getUint16(offset));
       offset += 2;
     }
 
-    var idDeltas = [];
+    final idDeltas = <int>[];
     for (var i = 0; i < nSegments; i++) {
       idDeltas.add(fontData.getInt16(offset));
       offset += 2;
     }
 
-    var idRangeOffsets = [];
+    final idRangeOffsets = <int>[];
     for (var i = 0; i < nSegments; i++) {
       idRangeOffsets.add(fontData.getUint16(offset));
       offset += 2;
@@ -406,15 +406,15 @@ class PMFontReader {
     var originalOffset = offset;
 
     for (var i = 0; i < nSegments; i++) {
-      var start = startCodes[i];
-      var end = endCodes[i];
-      var idDelta = idDeltas[i];
-      var idRangeOffset = idRangeOffsets[i];
-      var glyphIndex = -1;
+      final start = startCodes[i];
+      final end = endCodes[i];
+      final idDelta = idDeltas[i];
+      final idRangeOffset = idRangeOffsets[i];
+      int glyphIndex = -1;
       for (var j = start; j <= end; j++) {
         if (idRangeOffset == 0) {
           glyphIndex = (j + idDelta) % 65536;
-          glyphIdToCharacterCodes[glyphIndex] = j;
+          data.addGlyphIdToCharacterCode(glyphIndex, j);
           codepointToGlyph[j] = glyphIndex;
         } else {
           var nOffset = originalOffset +
@@ -422,10 +422,15 @@ class PMFontReader {
           var glyphIndex = fontData.getUint16(nOffset.toInt());
 
           if (glyphIndex != 0) {
-            glyphIndex += idDelta as int;
+            glyphIndex += idDelta;
             glyphIndex = glyphIndex % 65536;
-            if (glyphIdToCharacterCodes[glyphIndex] == 0)
-              glyphIdToCharacterCodes[glyphIndex] = j;
+            // Don't know what this does. Just applying
+            // https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter/issues/1
+            if (!data.hasMappingForGlyphId(glyphIndex)) {
+              data.addGlyphIdToCharacterCode(glyphIndex, j);
+              // Note: Adding: 'codepointToGlyph[j] = glyphIndex;' will result in test
+              // failures.
+            }
           }
         }
       }
@@ -434,26 +439,22 @@ class PMFontReader {
 
   /// Reads the Format12 subtable in the cmap table
   void _readFormat12Table(
-      data, offset, glyphIdToCharacterCodes, Map<int, int> codepointToGlyph) {
+      PMCMapFontTableData data, int offset, Map<int, int> codepointToGlyph) {
     offset += 2; // Step over reserved
-
-    // var subtableLength = fontData.getUint32(offset);
     offset += 4;
-
     offset += 4; // skip language
-
-    var numGroups = fontData.getUint32(offset);
+    final numGroups = fontData.getUint32(offset);
     offset += 4;
 
-    for (var i = 0; i < numGroups; i++) {
-      var startCode = fontData.getUint32(offset);
+    for (int i = 0; i < numGroups; i++) {
+      final startCode = fontData.getUint32(offset);
       offset += 4;
-      var endCode = fontData.getUint32(offset);
+      final endCode = fontData.getUint32(offset);
       offset += 4;
-      var startGlyphId = fontData.getUint32(offset);
+      int startGlyphId = fontData.getUint32(offset);
       offset += 4;
-      for (var j = startCode; j <= endCode; j++) {
-        glyphIdToCharacterCodes[startGlyphId] = j;
+      for (int j = startCode; j <= endCode; j++) {
+        data.addGlyphIdToCharacterCode(startGlyphId, j);
         codepointToGlyph[j] = startGlyphId;
         startGlyphId += 1;
       }

@@ -1,3 +1,6 @@
+/// Maps codepoints to glyph indices.
+///
+/// Use case: When creating a path, we get a codepoint, but need the glyph index.
 class PMCodepointToGlyphTable {
   final Map<int, int> _codePointToGlyph;
 

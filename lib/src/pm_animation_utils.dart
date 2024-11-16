@@ -7,16 +7,16 @@ import 'package:flutter/rendering.dart';
 
 /// Utility class to hold the pieces of a [Path] object.
 class PMPieces {
-  var paths = [];
+  var paths = <Path>[];
   var points = [];
 
   PMPieces(this.paths, this.points);
 
   static PMPieces breakIntoPieces(Path path, double precision) {
     var metrics = path.computeMetrics();
-    var paths = [];
+    var paths = <Path>[];
     var cPath = Path();
-    var points = [];
+    var points = <Offset?>[];
     metrics.forEach((metric) {
       for (var i = 0.0; i < 1.1; i += precision) {
         cPath.addPath(

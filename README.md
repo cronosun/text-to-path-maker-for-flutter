@@ -16,7 +16,7 @@ This is a fork of [https://github.com/hathibelagal-dev/text-to-path-maker-for-fl
  * Fixes some bugs:
    * For some codepoints, the original version could not generate a path (I'm not sure, but I think the problem occurs, when two or more codepoints point to the same glyph). Fix should also improve lookup speed (codepoint -> glyph).
    * https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter/issues/6
- * Added more strict typing (could use more).  
+ * Stricter typing.
  * Public API should still be the same.
 
 ## Getting started

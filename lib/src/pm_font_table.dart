@@ -11,9 +11,7 @@ class PMFontTable {
   final int offset;
   final int length;
   final int checkSum;
-
-  // TODO: Make this private & a setter for type 'PMFontTableData'
-  dynamic data;
+  PMFontTableData? _data;
 
   PMFontTable(
       {required this.tag,
@@ -31,7 +29,7 @@ class PMFontTable {
   }
 
   T? tryGettingData<T extends PMFontTableData>() {
-    final localData = data;
+    final localData = _data;
     if (localData == null) {
       return null;
     } else if (localData is T) {
@@ -40,9 +38,19 @@ class PMFontTable {
       return null;
     }
   }
+
+  void setData(PMFontTableData data) {
+    _data = data;
+  }
 }
 
 class PMFontTableData {}
+
+class PMMaxpFontTableData extends PMFontTableData {
+  final int numGlyphs;
+
+  PMMaxpFontTableData({required this.numGlyphs});
+}
 
 class PMHeaderFontTableData extends PMFontTableData {
   final int magicNumber;
@@ -64,6 +72,28 @@ class PMGlyfFontTableData extends PMFontTableData {
 
   void addGlyph(PMGlyphData glyph) {
     glyphs.add(glyph);
+  }
+}
+
+class PMCMapFontTableData extends PMFontTableData {
+  final int version;
+  // Note: This was sometimes called 'characterMap', sometimes
+  // 'glyphIdToCharacterCodes', will use 'glyphIdToCharacterCodes' for now.
+  // Second problem: Previously was a Map<int, int>, but it should be a Map<int, Set<int>>,
+  // since a glyph can have multiple character codes.
+  final Map<int, Set<int>> glyphIdToCharacterCodes = {};
+
+  PMCMapFontTableData({required this.version});
+
+  void addGlyphIdToCharacterCode(int glyphId, int characterCode) {
+    if (!glyphIdToCharacterCodes.containsKey(glyphId)) {
+      glyphIdToCharacterCodes[glyphId] = {};
+    }
+    glyphIdToCharacterCodes[glyphId]!.add(characterCode);
+  }
+
+  bool hasMappingForGlyphId(int glyphId) {
+    return glyphIdToCharacterCodes.containsKey(glyphId);
   }
 }
 
@@ -98,19 +128,3 @@ class PMContourData {
       required this.nCoords,
       required this.points});
 }
-
-/*
-class PMGlyphData {
-  final int id;
-  final int nContours;
-  final int xMin;
-  final int yMin;
-  final int xMax;  
-}
-
-class PMContourData {
-  final int instructionLength;
-  final List<int> instructions;
-  final int nCoords;
-  final List<PMContourPoint> points;
-}*/
