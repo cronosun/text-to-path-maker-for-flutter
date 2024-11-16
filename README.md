@@ -6,18 +6,21 @@ Additionally, this package offers a bunch of methods you can use to animate thos
 
 At the core of this package is a .ttf file parser, written in pure Dart. You can, if you want to, use it to read the font tables present in your TrueType font file.
 
-![](https://raw.githubusercontent.com/hathibelagal-dev/text-to-path-maker-for-flutter/master/example.gif)
-
 ## Original repository
 
-This is a fork of [https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter](https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter). This are the main differences:
+This is a fork of [https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter](https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter). These are the main differences:
 
- * This fork includes tests.
+ * This fork includes tests (tests against material icons, font-awesome icons and ion icons).
  * Fixes some bugs:
    * For some codepoints, the original version could not generate a path (I'm not sure, but I think the problem occurs, when two or more codepoints point to the same glyph). Fix should also improve lookup speed (codepoint -> glyph).
    * https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter/issues/6
  * Stricter typing.
+ * Uses a cursor for reading binary data (that's a bit safer against bugs & shorter code).
  * Public API should still be the same.
+
+## Demo
+
+![](https://raw.githubusercontent.com/hathibelagal-dev/text-to-path-maker-for-flutter/master/example.gif)
 
 ## Getting started
 

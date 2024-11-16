@@ -32,29 +32,11 @@ class PMFont {
       required this.tables,
       required this.numGlyphs});
 
-  /// Groups the points of a glyph into contours. Returns a
-  /// list of contours
-  List<List<PMContourPoint>> _contourify(
-      List<PMContourPoint> points, List<int> endPoints) {
-    var contours = <List<PMContourPoint>>[];
-    var currentContour = <PMContourPoint>[];
-    for (var i = 0; i < points.length; i++) {
-      currentContour.add(points[i]);
-      for (var j = 0; j < endPoints.length; j++) {
-        if (i == endPoints[j]) {
-          contours.add(currentContour);
-          currentContour = [];
-        }
-      }
-    }
-    return contours;
-  }
-
   /// Converts a character into a Flutter [Path] you can
   /// directly draw on a [Canvas]. Returns null, if the code point
   /// could not be found.
-  Path? generatePathForCharacterOrNull(int codePoint) {
-    var svgPath = generateSVGPathForCharacterOrNull(codePoint);
+  Path? generatePathForCharacterOrNull(int codepoint) {
+    var svgPath = generateSVGPathForCharacterOrNull(codepoint);
     if (svgPath == null) {
       return null;
     }
@@ -90,10 +72,10 @@ class PMFont {
   }
 
   /// Converts a character into a Flutter [Path] you can
-  /// directly draw on a [Canvas]. Returns an empty path, if the code point
+  /// directly draw on a [Canvas]. Returns an empty path, if the codepoint
   /// cannot be found.
-  Path generatePathForCharacter(int codePoint) {
-    final path = generatePathForCharacterOrNull(codePoint);
+  Path generatePathForCharacter(int codepoint) {
+    final path = generatePathForCharacterOrNull(codepoint);
     if (path == null) {
       return Path();
     } else {
@@ -105,10 +87,10 @@ class PMFont {
     return codepointToGlyphTable.codePoints;
   }
 
-  /// Takes a code point and returns an SVG Path string (if the character could be found),
+  /// Takes a codepoint and returns an SVG Path string (if the character could be found),
   /// or null if the character could not be found.
-  String? generateSVGPathForCharacterOrNull(int codePoint) {
-    int? glyphId = codepointToGlyphTable.glyphForCodePoint(codePoint);
+  String? generateSVGPathForCharacterOrNull(int codepoint) {
+    int? glyphId = codepointToGlyphTable.glyphForCodePoint(codepoint);
     if (glyphId == null) {
       return null;
     }
@@ -179,14 +161,32 @@ class PMFont {
     return path;
   }
 
-  /// Takes a character code and returns an SVG Path string.
+  /// Takes a character code (codepoint) and returns an SVG Path string.
   /// Returns an empty string if the character could not be found.
-  String generateSVGPathForCharacter(int cIndex) {
-    final stringOrNull = generateSVGPathForCharacterOrNull(cIndex);
+  String generateSVGPathForCharacter(int codepoint) {
+    final stringOrNull = generateSVGPathForCharacterOrNull(codepoint);
     if (stringOrNull == null) {
       return "";
     } else {
       return stringOrNull;
     }
+  }
+
+  /// Groups the points of a glyph into contours. Returns a
+  /// list of contours
+  List<List<PMContourPoint>> _contourify(
+      List<PMContourPoint> points, List<int> endPoints) {
+    var contours = <List<PMContourPoint>>[];
+    var currentContour = <PMContourPoint>[];
+    for (var i = 0; i < points.length; i++) {
+      currentContour.add(points[i]);
+      for (var j = 0; j < endPoints.length; j++) {
+        if (i == endPoints[j]) {
+          contours.add(currentContour);
+          currentContour = [];
+        }
+      }
+    }
+    return contours;
   }
 }
