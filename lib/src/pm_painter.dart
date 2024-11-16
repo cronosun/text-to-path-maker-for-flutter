@@ -38,7 +38,7 @@ class PMPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawPath(path, _paint);    
+    canvas.drawPath(path, _paint);
     canvas.drawCircle(indicatorPosition, radius, indicator);
   }
 

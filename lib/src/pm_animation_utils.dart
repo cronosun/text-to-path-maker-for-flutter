@@ -5,17 +5,6 @@ import 'package:flutter/rendering.dart';
 * Copyright Ashraff Hathibelagal 2019
 */
 
-/// Utility class to perform transform operations on a [Path] object
-class PMTransform {
-  /// Translate and scale a path to desired location and size
-  static Path moveAndScale(path, posX, posY, scaleX, scaleY) {
-    var transformMatrix = Matrix4.identity();
-    transformMatrix.translate(posX, posY);
-    transformMatrix.scale(scaleX, -scaleY);
-    return path.transform(transformMatrix.storage);
-  }
-}
-
 /// Utility class to hold the pieces of a [Path] object.
 class PMPieces {
   var paths = [];

@@ -1,3 +1,6 @@
+import 'package:text_to_path_maker/src/pm_font_tables.dart';
+
+import 'pm_codepoint_to_glyph_table.dart';
 import 'pm_contour_point.dart';
 import 'dart:ui';
 
@@ -9,14 +12,24 @@ import 'dart:ui';
 /// Represents a Font. Objects of this class must be generated
 /// by the FontReader class.
 class PMFont {
-  var sfntVersion;
-  var numTables;
-  var searchRange;
-  var entrySelector;
-  var rangeShift;
+  final int sfntVersion;
+  final int numTables;
+  final int searchRange;
+  final int entrySelector;
+  final int rangeShift;
+  final PMCodepointToGlyphTable codepointToGlyphTable;
+  final PMFontTables tables;
+  final int numGlyphs;
 
-  var tables;
-  var numGlyphs;
+  PMFont(
+      {required this.sfntVersion,
+      required this.numTables,
+      required this.searchRange,
+      required this.entrySelector,
+      required this.rangeShift,
+      required this.codepointToGlyphTable,
+      required this.tables,
+      required this.numGlyphs});
 
   /// Groups the points of a glyph into contours. Returns a
   /// list of contours
@@ -36,32 +49,34 @@ class PMFont {
   }
 
   /// Converts a character into a Flutter [Path] you can
-  /// directly draw on a [Canvas]
-  Path generatePathForCharacter(cIndex) {
-    var svgPath = generateSVGPathForCharacter(cIndex);
-    var commands = svgPath.split(" ");
-
-    Path path = Path();
-
+  /// directly draw on a [Canvas]. Returns null, if the code point
+  /// could not be found.
+  Path? generatePathForCharacterOrNull(int codePoint) {
+    var svgPath = generateSVGPathForCharacterOrNull(codePoint);
+    if (svgPath == null) {
+      return null;
+    }
+    final commands = svgPath.split(" ");
+    final path = Path();
     commands.forEach((command) {
       if (command.startsWith("M")) {
-        var coords = command.substring(1).split(",");
-        var x = double.parse(coords[0]);
-        var y = double.parse(coords[1]);
+        final coords = command.substring(1).split(",");
+        final x = double.parse(coords[0]);
+        final y = double.parse(coords[1]);
         path.moveTo(x, y);
       }
       if (command.startsWith("L")) {
-        var coords = command.substring(1).split(",");
-        var x = double.parse(coords[0]);
-        var y = double.parse(coords[1]);
+        final coords = command.substring(1).split(",");
+        final x = double.parse(coords[0]);
+        final y = double.parse(coords[1]);
         path.lineTo(x, y);
       }
       if (command.startsWith("Q")) {
-        var coords = command.substring(1).split(",");
-        var x1 = double.parse(coords[0]);
-        var y1 = double.parse(coords[1]);
-        var x2 = double.parse(coords[2]);
-        var y2 = double.parse(coords[3]);
+        final coords = command.substring(1).split(",");
+        final x1 = double.parse(coords[0]);
+        final y1 = double.parse(coords[1]);
+        final x2 = double.parse(coords[2]);
+        final y2 = double.parse(coords[3]);
         path.quadraticBezierTo(x1, y1, x2, y2);
       }
       if (command.startsWith("z")) {
@@ -72,24 +87,39 @@ class PMFont {
     return path;
   }
 
-  /// Takes a character code and returns an SVG Path string.
-  String generateSVGPathForCharacter(cIndex) {
-    var glyphId = -1;
-    for (var i = 0; i < tables['glyf'].data['glyphs'].length; i++) {
-      if (tables['cmap'].data['characterMap'][i] == cIndex) {
-        glyphId = i;
-        break;
-      }
+  /// Converts a character into a Flutter [Path] you can
+  /// directly draw on a [Canvas]. Returns an empty path, if the code point
+  /// cannot be found.
+  Path generatePathForCharacter(int codePoint) {
+    final path = generatePathForCharacterOrNull(codePoint);
+    if (path == null) {
+      return Path();
+    } else {
+      return path;
+    }
+  }
+
+  Iterable<int> get codePoints {
+    return codepointToGlyphTable.codePoints;
+  }
+
+  /// Takes a code point and returns an SVG Path string (if the character could be found),
+  /// or null if the character could not be found.
+  String? generateSVGPathForCharacterOrNull(int codePoint) {
+    int? glyphId = codepointToGlyphTable.glyphForCodePoint(codePoint);
+    if (glyphId == null) {
+      return null;
     }
 
-    if (glyphId == -1) {
-      print("Character not found.");
-      return "";
+    final glyphsTable = tables.requireFontTable(PMFontTables.tableNameGlyf);
+    var glyphs = glyphsTable.data['glyphs'] as List<dynamic>;
+    if (glyphId < 0 || glyphId >= glyphs.length) {
+      return null;
     }
+    var glyphData = glyphs[glyphId];
 
     var contours = _contourify(
-        tables['glyf'].data['glyphs'][glyphId]['contourData']['points'],
-        tables['glyf'].data['glyphs'][glyphId]['endIndices']);
+        glyphData['contourData']['points'], glyphData['endIndices']);
 
     var path = "";
 
@@ -138,5 +168,16 @@ class PMFont {
       path = path + "z ";
     }
     return path;
+  }
+
+  /// Takes a character code and returns an SVG Path string.
+  /// Returns an empty string if the character could not be found.
+  String generateSVGPathForCharacter(int cIndex) {
+    final stringOrNull = generateSVGPathForCharacterOrNull(cIndex);
+    if (stringOrNull == null) {
+      return "";
+    } else {
+      return stringOrNull;
+    }
   }
 }

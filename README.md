@@ -8,6 +8,17 @@ At the core of this package is a .ttf file parser, written in pure Dart. You can
 
 ![](https://raw.githubusercontent.com/hathibelagal-dev/text-to-path-maker-for-flutter/master/example.gif)
 
+## Original repository
+
+This is a fork of [https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter](https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter). This are the main differences:
+
+ * This fork includes tests.
+ * Fixes some bugs:
+   * For some codepoints, the original version could not generate a path (I'm not sure, but I think the problem occurs, when two or more codepoints point to the same glyph). Fix should also improve lookup speed (codepoint -> glyph).
+   * https://github.com/hathibelagal-dev/text-to-path-maker-for-flutter/issues/6
+ * Added more strict typing (could use more).  
+ * Public API should still be the same.
+
 ## Getting started
 
 You must always start by calling the `parseTTFAsset()` method available in the `PMFontReader` class to parse your font asset. Currently, only .ttf files are supported.

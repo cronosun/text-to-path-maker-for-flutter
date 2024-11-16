@@ -5,10 +5,15 @@
 
 /// Represent a font table
 class PMFontTable {
-  var tag;
-  var offset;
-  var length;
-  var checkSum;
+  final String tag;
+  final int offset;
+  final int length;
+  final int checkSum;
+  dynamic data;
 
-  var data;
+  PMFontTable(
+      {required this.tag,
+      required this.offset,
+      required this.length,
+      required this.checkSum});
 }
