@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
     
-  text_to_path_maker:
+  cronosun_text_to_path_maker:
     path: ../
 
 dev_dependencies:

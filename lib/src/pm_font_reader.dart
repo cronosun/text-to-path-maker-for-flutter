@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 import 'dart:io';
 
-import 'package:text_to_path_maker/src/pm_font_builder.dart';
-import 'package:text_to_path_maker/text_to_path_maker.dart';
+import 'pm_font_builder.dart';
+import 'package:cronosun_text_to_path_maker/cronosun_text_to_path_maker.dart';
 
 import 'pm_codepoint_to_glyph_table.dart';
 import 'pm_contour_point.dart';
@@ -109,13 +109,15 @@ class PMFontReader {
     var startLocaOffset =
         fontTables.requireFontTable(PMFontTables.tableNameLoca).offset;
 
-    var data = {'glyphs': []};
-    glyfFontTable.data = data;
+    final tableData = PMGlyfFontTableData();
+    glyfFontTable.data = tableData;
 
     for (int i = 0; i < font.numGlyphs; i++) {
       int glyphOffset = startGlyfOffset;
 
-      final indexToLocFormat = headFontTable?.data['indexToLocFormat'];
+      final indexToLocFormat = headFontTable
+          ?.tryGettingData<PMHeaderFontTableData>()
+          ?.indexToLocFormat;
       if (indexToLocFormat != null && indexToLocFormat == 0) {
         glyphOffset += fontData.getUint16(startLocaOffset) * 2;
         startLocaOffset += 2;
@@ -124,120 +126,151 @@ class PMFontReader {
         startLocaOffset += 4;
       }
 
-      var glyphData = {};
-      data['glyphs']?.add(glyphData);
-      glyphData['id'] = i;
-      glyphData['nContours'] = fontData.getInt16(glyphOffset);
+      final gdId = i;
+      final gdNContours = fontData.getInt16(glyphOffset);
       glyphOffset += 2;
-      glyphData['xMin'] = fontData.getInt16(glyphOffset);
+      final gdXMin = fontData.getInt16(glyphOffset);
       glyphOffset += 2;
-      glyphData['yMin'] = fontData.getInt16(glyphOffset);
+      final gdYMin = fontData.getInt16(glyphOffset);
       glyphOffset += 2;
-      glyphData['xMax'] = fontData.getInt16(glyphOffset);
+      final gdXMax = fontData.getInt16(glyphOffset);
       glyphOffset += 2;
-      glyphData['yMax'] = fontData.getInt16(glyphOffset);
+      final gdYMax = fontData.getInt16(glyphOffset);
       glyphOffset += 2;
-      if (glyphData['nContours'] > 0) {
-        var contourData = {};
-        glyphData['contourData'] = contourData;
-        var endIndicesOfContours = [];
-        glyphData['endIndices'] = endIndicesOfContours;
-        for (var j = 0; j < glyphData['nContours']; j++) {
-          endIndicesOfContours.add(fontData.getUint16(glyphOffset));
+
+      final glyphData = PMGlyphData(
+          id: gdId,
+          nContours: gdNContours,
+          xMin: gdXMin,
+          yMin: gdYMin,
+          xMax: gdXMax,
+          yMax: gdYMax);
+      tableData.addGlyph(glyphData);
+
+      if (glyphData.nContours > 0) {
+        for (var j = 0; j < glyphData.nContours; j++) {
+          glyphData.endIndicesOfContours.add(fontData.getUint16(glyphOffset));
           glyphOffset += 2;
         }
 
-        contourData['instructionLength'] = fontData.getUint16(glyphOffset);
+        final cdInstructionLength = fontData.getUint16(glyphOffset);
         glyphOffset += 2;
 
-        contourData['instructions'] = [];
-        if (contourData['instructionLength'] > 0) {
-          for (var j = 0; j < contourData['instructionLength']; j++) {
-            contourData['instructions'].add(fontData.getUint8(glyphOffset));
+        final cdInstructions = <int>[];
+        if (cdInstructionLength > 0) {
+          for (var j = 0; j < cdInstructionLength; j++) {
+            cdInstructions.add(fontData.getUint8(glyphOffset));
             glyphOffset += 1;
           }
         }
 
-        contourData['nCoords'] = 0;
+        final int cdNCords;
+        final endIndicesOfContours = glyphData.endIndicesOfContours;
         if (endIndicesOfContours.length > 0) {
-          contourData['nCoords'] =
-              endIndicesOfContours[endIndicesOfContours.length - 1] + 1;
+          cdNCords = endIndicesOfContours[endIndicesOfContours.length - 1] + 1;
+        } else {
+          cdNCords = 0;
         }
 
-        var flags = [];
-        for (var j = 0; j < contourData['nCoords']; j++) {
+        // Contour data flags
+        final cdFlags = <int>[];
+        for (var j = 0; j < cdNCords; j++) {
           var flag = fontData.getUint8(glyphOffset);
           glyphOffset += 1;
-          flags.add(flag);
+          cdFlags.add(flag);
 
           if ((flag & 0x08) == 0x08) {
             var times = fontData.getUint8(glyphOffset);
             glyphOffset += 1;
             for (var k = 0; k < times; k++) {
-              flags.add(flag);
+              cdFlags.add(flag);
               j += 1;
             }
           }
         }
 
-        contourData['points'] = [];
-        for (var j = 0; j < flags.length; j++) {
-          var flag = flags[j];
-          var point = PMContourPoint();
-          point.flag = flag;
-          if ((flag & 0x01) == 0x01) {
-            point.isOnCurve = true;
-          } else {
-            point.isOnCurve = false;
-          }
-          contourData['points'].add(point);
+        // Points: is on curve?
+        final cdPointsIsOnCurve = <bool>[];
+        for (var j = 0; j < cdFlags.length; j++) {
+          final flag = cdFlags[j];
+          final bool pointIsOnCurve = ((flag & 0x01) == 0x01);
+          cdPointsIsOnCurve.add(pointIsOnCurve);
         }
 
-        // load X coordinates
-        var prevX = 0;
-        for (var j = 0; j < contourData['points'].length; j++) {
-          var point = contourData['points'][j];
-          var curX = 0;
-          if ((point.flag & 0x02) == 0x02) {
+        // Load X coordinates
+        int prevX = 0;
+        final cdPointsX = <int>[];
+        for (var j = 0; j < cdFlags.length; j++) {
+          final flag = cdFlags[j];
+          int pointX = 0;
+          int curX = 0;
+          if ((flag & 0x02) == 0x02) {
             curX = fontData.getUint8(glyphOffset);
             glyphOffset += 1;
-            if ((point.flag & 0x10) == 0) {
+            if ((flag & 0x10) == 0) {
               curX *= -1;
             }
-            point.x = prevX + curX;
+            pointX = prevX + curX;
           } else {
-            if ((point.flag & 0x10) == 0x10)
-              point.x = prevX;
+            if ((flag & 0x10) == 0x10)
+              pointX = prevX;
             else {
-              point.x = prevX + fontData.getInt16(glyphOffset);
+              pointX = prevX + fontData.getInt16(glyphOffset);
               glyphOffset += 2;
             }
           }
-          prevX = point.x;
+          prevX = pointX;
+          cdPointsX.add(pointX);
         }
 
-        // load Y coordinates
-        var prevY = 0;
-        for (var j = 0; j < contourData['points'].length; j++) {
-          var point = contourData['points'][j];
-          var curY = 0;
-          if ((point.flag & 0x04) == 0x04) {
+        // Load Y coordinates
+        int prevY = 0;
+        final cdPointsY = <int>[];
+        for (var j = 0; j < cdFlags.length; j++) {
+          final flag = cdFlags[j];
+          int pointY = 0;
+          int curY = 0;
+          if ((flag & 0x04) == 0x04) {
             curY = fontData.getUint8(glyphOffset);
             glyphOffset += 1;
-            if ((point.flag & 0x20) == 0) {
+            if ((flag & 0x20) == 0) {
               curY *= -1;
             }
-            point.y = prevY + curY;
+            pointY = prevY + curY;
           } else {
-            if ((point.flag & 0x20) == 0x20)
-              point.y = prevY;
+            if ((flag & 0x20) == 0x20)
+              pointY = prevY;
             else {
-              point.y = prevY + fontData.getInt16(glyphOffset);
+              pointY = prevY + fontData.getInt16(glyphOffset);
               glyphOffset += 2;
             }
           }
-          prevY = point.y;
+          prevY = pointY;
+          cdPointsY.add(pointY);
         }
+
+        // Collect points
+        final cdPoints = <PMContourPoint>[];
+        for (var j = 0; j < cdFlags.length; j++) {
+          final isOnCurve = cdPointsIsOnCurve[j];
+          final flag = cdFlags[j];
+          final pointX = cdPointsX[j];
+          final pointY = cdPointsY[j];
+
+          final point = PMContourPoint(
+              x: pointX.toDouble(),
+              y: pointY.toDouble(),
+              isOnCurve: isOnCurve,
+              flag: flag);
+          cdPoints.add(point);
+        }
+
+        final contourData = PMContourData(
+            instructionLength: cdInstructionLength,
+            instructions: cdInstructions,
+            nCoords: cdNCords,
+            points: cdPoints);
+        glyphData.contourData = contourData;
       }
     }
   }
@@ -248,13 +281,17 @@ class PMFontReader {
     final headFontTable =
         fontTables.requireFontTable(PMFontTables.tableNameHead);
 
-    int startOffset = headFontTable.offset;
-    var data = {
-      'magicNumber': fontData.getUint32(startOffset + 12),
-      'flags': fontData.getUint16(startOffset + 16),
-      'unitsPerEm': fontData.getUint16(startOffset + 18),
-      'indexToLocFormat': fontData.getUint16(startOffset + 50)
-    };
+    final startOffset = headFontTable.offset;
+
+    final magicNumber = fontData.getUint32(startOffset + 12);
+    final flags = fontData.getUint16(startOffset + 16);
+    final unitsPerEm = fontData.getUint16(startOffset + 18);
+    final indexToLocFormat = fontData.getUint16(startOffset + 50);
+    final data = PMHeaderFontTableData(
+        magicNumber: magicNumber,
+        flags: flags,
+        unitsPerEm: unitsPerEm,
+        indexToLocFormat: indexToLocFormat);
     headFontTable.data = data;
   }
 

@@ -1,4 +1,5 @@
-import 'package:text_to_path_maker/src/pm_font_tables.dart';
+import 'pm_font_table.dart';
+import 'pm_font_tables.dart';
 
 import 'pm_codepoint_to_glyph_table.dart';
 import 'pm_contour_point.dart';
@@ -33,9 +34,10 @@ class PMFont {
 
   /// Groups the points of a glyph into contours. Returns a
   /// list of contours
-  List _contourify(points, endPoints) {
-    var contours = [];
-    var currentContour = [];
+  List<List<PMContourPoint>> _contourify(
+      List<PMContourPoint> points, List<int> endPoints) {
+    var contours = <List<PMContourPoint>>[];
+    var currentContour = <PMContourPoint>[];
     for (var i = 0; i < points.length; i++) {
       currentContour.add(points[i]);
       for (var j = 0; j < endPoints.length; j++) {
@@ -112,38 +114,45 @@ class PMFont {
     }
 
     final glyphsTable = tables.requireFontTable(PMFontTables.tableNameGlyf);
-    var glyphs = glyphsTable.data['glyphs'] as List<dynamic>;
+    final glyphsTableData = glyphsTable.tryGettingData<PMGlyfFontTableData>();
+
+    if (glyphsTableData == null) {
+      return null;
+    }
+    final glyphs = glyphsTableData.glyphs;
     if (glyphId < 0 || glyphId >= glyphs.length) {
       return null;
     }
-    var glyphData = glyphs[glyphId];
+    final glyphData = glyphs[glyphId];
 
     var contours = _contourify(
-        glyphData['contourData']['points'], glyphData['endIndices']);
+        glyphData.contourData?.points ?? [], glyphData.endIndicesOfContours);
 
     var path = "";
 
-    for (var k = 0; k < contours.length; k++) {
-      var contour = contours[k];
+    for (int k = 0; k < contours.length; k++) {
+      final contour = contours[k];
 
-      var interpolated = [];
+      var interpolated = <PMContourPoint>[];
       for (var i = 0; i < contour.length - 1; i++) {
         interpolated.add(contour[i]);
         if (!contour[i].isOnCurve && !contour[i + 1].isOnCurve) {
-          var t = PMContourPoint();
-          t.x = (contour[i].x + contour[i + 1].x) / 2;
-          t.y = (contour[i].y + contour[i + 1].y) / 2;
-          t.isOnCurve = true;
+          final t = PMContourPoint(
+              flag: 0,
+              isOnCurve: true,
+              x: (contour[i].x + contour[i + 1].x) / 2,
+              y: (contour[i].y + contour[i + 1].y) / 2);
           interpolated.add(t);
         }
       }
       interpolated.add(contour[contour.length - 1]);
       var lastPoint = contour[contour.length - 1];
       if (!lastPoint.isOnCurve) {
-        var t = PMContourPoint();
-        t.x = (lastPoint.x + contour[0].x) / 2;
-        t.y = (lastPoint.y + contour[0].y) / 2;
-        t.isOnCurve = true;
+        final t = PMContourPoint(
+            flag: 0,
+            isOnCurve: true,
+            x: (lastPoint.x + contour[0].x) / 2,
+            y: (lastPoint.y + contour[0].y) / 2);
         interpolated.add(t);
       }
 

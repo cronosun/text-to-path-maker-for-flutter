@@ -3,10 +3,16 @@
 * Copyright Ashraff Hathibelagal 2019
 */
 
-/// Represents a point in the contours of a glyph
+/// Represents a point in the contours of a glyph.
 class PMContourPoint {
-  var x;
-  var y;
-  var isOnCurve;
-  var flag;
+  final bool isOnCurve;
+  final double x;
+  final double y;
+  final int flag;
+
+  PMContourPoint(
+      {required this.isOnCurve,
+      required this.x,
+      required this.y,
+      required this.flag});
 }

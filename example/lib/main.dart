@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:text_to_path_maker/text_to_path_maker.dart';
+import 'package:cronosun_text_to_path_maker/cronosun_text_to_path_maker.dart';
 import 'dart:typed_data';
 
 void main() {

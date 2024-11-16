@@ -1,4 +1,4 @@
-import 'package:text_to_path_maker/text_to_path_maker.dart';
+import 'package:cronosun_text_to_path_maker/cronosun_text_to_path_maker.dart';
 
 import 'pm_codepoint_to_glyph_table.dart';
 import 'pm_font_tables.dart';

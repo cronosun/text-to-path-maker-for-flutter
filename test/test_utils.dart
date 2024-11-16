@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
-import 'package:text_to_path_maker/text_to_path_maker.dart';
+import 'package:cronosun_text_to_path_maker/cronosun_text_to_path_maker.dart';
 
 class Base64Font {
   final String fontAsBase64;
