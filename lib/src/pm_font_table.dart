@@ -3,7 +3,7 @@
 * Copyright Ashraff Hathibelagal 2019
 */
 
-import 'package:cronosun_text_to_path_maker/src/pm_contour_point.dart';
+import 'pm_contour_point.dart';
 
 /// Represent a font table
 class PMFontTable {

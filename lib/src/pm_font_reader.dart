@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'dart:io';
 
-import 'package:cronosun_text_to_path_maker/src/pm_cursor.dart';
+import 'pm_cursor.dart';
 
 import 'pm_font_builder.dart';
 import 'package:cronosun_text_to_path_maker/cronosun_text_to_path_maker.dart';
